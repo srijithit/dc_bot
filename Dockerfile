@@ -8,6 +8,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /build
 
+# Install GCC and libopus-dev for compiling dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libopus-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy and install python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
@@ -22,6 +28,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
+
+# Install runtime libopus library
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libopus0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy installed dependencies from the builder stage
 COPY --from=builder /install /usr/local
