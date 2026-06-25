@@ -7,6 +7,17 @@ import threading
 
 logger = logging.getLogger('discord_bot.voice')
 
+# Monkey-patch to fix TypeError when channel_id is None in discord-ext-voice-recv
+original_on_voice_state_update = voice_recv.VoiceRecvClient.on_voice_state_update
+
+async def patched_on_voice_state_update(self, data):
+    modified_data = data.copy()
+    if modified_data.get('channel_id') is None:
+        modified_data['channel_id'] = '0'
+    await original_on_voice_state_update(self, modified_data)
+
+voice_recv.VoiceRecvClient.on_voice_state_update = patched_on_voice_state_update
+
 class QueueAudioSource(discord.AudioSource):
     """A custom thread-safe AudioSource that reads from a PCM packet queue buffer."""
     def __init__(self):
