@@ -157,7 +157,7 @@ class Voice(commands.Cog):
             pass  # Already listening
 
         embed = discord.Embed(
-            description=f"📥 Connected to {target_channel.mention}.\nUse `/mic status:on` or `!mic on` to enable voice echo!",
+            description=f"📥 Connected to {target_channel.mention}.\nUse `/mic on` to enable voice echo!",
             color=discord.Color.brand_green() if hasattr(discord.Color, 'brand_green') else discord.Color.green()
         )
         if ctx.interaction:
