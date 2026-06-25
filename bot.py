@@ -20,7 +20,10 @@ load_dotenv()
 tokens_str = os.getenv("DISCORD_TOKEN", "")
 TOKENS = [t.strip() for t in tokens_str.split(",") if t.strip()]
 
-PREFIX = os.getenv("COMMAND_PREFIX", "!")
+PREFIX_ENV = os.getenv("COMMAND_PREFIX", "!")
+PREFIX = [p.strip() for p in PREFIX_ENV.split(",") if p.strip()]
+if "/" not in PREFIX:
+    PREFIX.append("/")
 ENABLE_KEEP_ALIVE = os.getenv("ENABLE_KEEP_ALIVE", "true").lower() == "true"
 PORT = int(os.getenv("PORT", "8080"))
 
