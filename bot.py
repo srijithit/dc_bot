@@ -138,6 +138,21 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             logger.error(f"{bot_label} Failed to send error response to Discord: {e}")
 
+async def run_bot_safe(bot: DiscordBot, token: str, index: int):
+    """Starts a bot instance safely, catching login or intent errors without crashing other bots."""
+    bot_label = f"[Bot #{index}]"
+    try:
+        await bot.start(token)
+    except discord.LoginFailure:
+        logger.critical(f"{bot_label} Failed to log in: The Discord Token provided is invalid.")
+    except discord.errors.PrivilegedIntentsRequired:
+        logger.critical(
+            f"{bot_label} Privileged Intents Required! "
+            "Please enable 'Server Members Intent' and 'Message Content Intent' in the Discord Developer Portal."
+        )
+    except Exception as e:
+        logger.critical(f"{bot_label} Runtime error: {e}", exc_info=True)
+
 async def main():
     if not TOKENS:
         logger.critical("DISCORD_TOKEN is missing or set to placeholder value! Please configure it in your .env file.")
@@ -155,14 +170,14 @@ async def main():
     if ENABLE_KEEP_ALIVE:
         runner = await start_keep_alive(port=PORT)
 
-    # Create Bot instances and corresponding startup tasks
+    # Create Bot instances and corresponding startup tasks using the safe wrapper
     bot_instances = []
     startup_tasks = []
     
-    for token in valid_tokens:
+    for i, token in enumerate(valid_tokens):
         bot = DiscordBot()
         bot_instances.append(bot)
-        startup_tasks.append(bot.start(token))
+        startup_tasks.append(run_bot_safe(bot, token, i + 1))
 
     logger.info(f"Starting {len(valid_tokens)} Discord Bot instance(s) concurrently...")
     
@@ -172,7 +187,7 @@ async def main():
     except asyncio.CancelledError:
         logger.info("Bot startup tasks were cancelled.")
     except Exception as e:
-        logger.critical(f"Fatal error during bots runtime: {e}", exc_info=True)
+        logger.critical(f"Fatal error in bot orchestrator: {e}", exc_info=True)
     finally:
         # Clean shutdown of keep alive server
         if runner:
