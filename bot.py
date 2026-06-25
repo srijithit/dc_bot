@@ -40,6 +40,50 @@ class DiscordBot(commands.Bot):
         # Override tree error handler with custom logger
         self.tree.on_error = self.on_tree_error
 
+        # Add access check for classical prefix commands
+        @self.check
+        async def globally_check_access(ctx: commands.Context) -> bool:
+            from utils.access_control import is_user_allowed
+            from utils.keep_alive import log_activity
+            
+            # Admins bypass normal whitelist/blacklist checks
+            is_admin = ctx.author.guild_permissions.administrator if ctx.guild else False
+            allowed = is_user_allowed(ctx.author.id, is_admin)
+            if not allowed:
+                raise commands.CheckFailure("You do not have permission to use this bot's commands.")
+            
+            # Log command activity
+            bot_tag = str(ctx.bot.user)
+            user_tag = str(ctx.author)
+            user_id = ctx.author.id
+            guild_name = ctx.guild.name if ctx.guild else "Direct Message"
+            command_str = f"{ctx.prefix}{ctx.command.name if ctx.command else 'unknown'}"
+            log_activity(bot_tag, user_tag, user_id, command_str, guild_name)
+            return True
+            
+        # Add access check for application/slash commands
+        async def tree_interaction_check(interaction: discord.Interaction) -> bool:
+            from utils.access_control import is_user_allowed
+            from utils.keep_alive import log_activity
+            
+            if interaction.type == discord.InteractionType.application_command:
+                is_admin = interaction.user.guild_permissions.administrator if interaction.guild else False
+                allowed = is_user_allowed(interaction.user.id, is_admin)
+                if not allowed:
+                    await interaction.response.send_message("❌ You do not have permission to use this bot's commands.", ephemeral=True)
+                    return False
+                
+                # Log slash command activity
+                bot_tag = str(interaction.client.user)
+                user_tag = str(interaction.user)
+                user_id = interaction.user.id
+                guild_name = interaction.guild.name if interaction.guild else "Direct Message"
+                cmd_name = interaction.command.name if interaction.command else "unknown"
+                log_activity(bot_tag, user_tag, user_id, f"/{cmd_name}", guild_name)
+            return True
+            
+        self.tree.interaction_check = tree_interaction_check
+
     async def setup_hook(self):
         """Asynchronous initialization hook called before the bot connects."""
         bot_label = f"[{self.user}]" if self.user else "[Bot]"
@@ -85,9 +129,16 @@ class DiscordBot(commands.Bot):
         await self.change_presence(activity=activity)
         logger.info(f"{bot_label} Bot presence set to 'Watching the server'")
 
+        # Register bot in keep_alive dashboard
+        from utils.keep_alive import register_bot
+        register_bot(self.user.id, str(self.user))
+
     async def on_disconnect(self):
         bot_label = f"[{self.user}]" if self.user else "[Bot]"
         logger.warning(f"{bot_label} Disconnected from Discord Gateway. discord.py will attempt auto-reconnect.")
+        if self.user:
+            from utils.keep_alive import unregister_bot
+            unregister_bot(self.user.id)
 
     async def on_resumed(self):
         bot_label = f"[{self.user}]" if self.user else "[Bot]"
@@ -105,6 +156,11 @@ class DiscordBot(commands.Bot):
         elif isinstance(error, commands.MissingPermissions):
             try:
                 await ctx.send("❌ You do not have permissions to run this command.", delete_after=10)
+            except Exception:
+                pass
+        elif isinstance(error, commands.CheckFailure):
+            try:
+                await ctx.send(f"❌ {error}", delete_after=10)
             except Exception:
                 pass
         elif isinstance(error, commands.MissingRequiredArgument):

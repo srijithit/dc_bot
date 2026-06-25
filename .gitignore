@@ -15,6 +15,9 @@ ENV/
 # Application logs directory
 logs/
 
+# Runtime data files
+data/
+
 # IDE configurations
 .vscode/
 .idea/
