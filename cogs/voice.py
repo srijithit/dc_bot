@@ -8,15 +8,26 @@ import threading
 logger = logging.getLogger('discord_bot.voice')
 
 # Monkey-patch to fix TypeError when channel_id is None in discord-ext-voice-recv
-original_on_voice_state_update = voice_recv.VoiceRecvClient.on_voice_state_update
+if not hasattr(voice_recv.VoiceRecvClient, '_is_patched'):
+    original_on_voice_state_update = voice_recv.VoiceRecvClient.on_voice_state_update
 
-async def patched_on_voice_state_update(self, data):
-    modified_data = data.copy()
-    if modified_data.get('channel_id') is None:
-        modified_data['channel_id'] = '0'
-    await original_on_voice_state_update(self, modified_data)
+    async def patched_on_voice_state_update(self, data):
+        if data.get('channel_id') is None:
+            # Handle disconnect case safely without raising TypeError
+            if self._reader:
+                try:
+                    self._reader.router.destroy_all_decoders()
+                except Exception:
+                    pass
+            # Call parent class on_voice_state_update directly
+            await super(voice_recv.VoiceRecvClient, self).on_voice_state_update(data)
+            return
 
-voice_recv.VoiceRecvClient.on_voice_state_update = patched_on_voice_state_update
+        # Otherwise call the original method
+        await original_on_voice_state_update(self, data)
+
+    voice_recv.VoiceRecvClient.on_voice_state_update = patched_on_voice_state_update
+    voice_recv.VoiceRecvClient._is_patched = True
 
 class QueueAudioSource(discord.AudioSource):
     """A custom thread-safe AudioSource that reads from a PCM packet queue buffer."""
