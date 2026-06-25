@@ -374,13 +374,7 @@ async def handle_login_page(request: web.Request):
     if verify_session(request):
         return web.HTTPFound('/')
 
-    warning_text = ""
-    if ADMIN_PASSWORD == "admin":
-        warning_text = """
-        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--red); color: #ff6b6b; padding: 0.8rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9rem; text-align: center;">
-            ⚠️ Using default password <strong>'admin'</strong>. Please set the <strong>ADMIN_PASSWORD</strong> environment variable to secure your panel.
-        </div>
-        """
+
 
     html_content = f"""
     <!DOCTYPE html>
@@ -489,7 +483,7 @@ async def handle_login_page(request: web.Request):
         <div class="login-card">
             <h1>Panel Authorization</h1>
             <p>Please log in to manage your bot fleet</p>
-            {warning_text}
+
             <form action="/login" method="post">
                 <div class="form-group">
                     <label for="password">Admin Password</label>
