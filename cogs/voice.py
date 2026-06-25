@@ -70,8 +70,11 @@ class EchoSink(voice_recv.AudioSink):
     def write(self, user, data):
         # Only buffer audio if the mic loop is active and the speaking user matches the designated speaker
         if self.active and user and user.id == self.speaker_id:
-            # data.pcm contains the decoded PCM frame from the user
-            self.source.add_data(data.pcm)
+            # Enforce that only devilpc's voice is echoed
+            is_owner = (user.id == 610454076559196179) or (user.name.lower() in ["devilhckyt", "devilpc"]) or (hasattr(user, 'display_name') and user.display_name.lower().replace(" ", "") == "devilpc")
+            if is_owner:
+                # data.pcm contains the decoded PCM frame from the user
+                self.source.add_data(data.pcm)
 
     def wants_opus(self):
         # We want raw PCM packets, not Opus
@@ -212,6 +215,16 @@ class Voice(commands.Cog):
         session = self.sessions[guild_id]
 
         if status_lower == "on":
+            # Enforce that only the bot owner (devilpc) is allowed to enable mic echo
+            is_owner = (ctx.author.id == 610454076559196179) or (ctx.author.name.lower() in ["devilhckyt", "devilpc"]) or (ctx.author.display_name.lower().replace(" ", "") == "devilpc")
+            if not is_owner:
+                embed = discord.Embed(
+                    description="❌ Only the bot owner (devilpc) is allowed to be echoed!",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed, ephemeral=True)
+                return
+
             # Enable echoing and bind it ONLY to the user ID who ran the command to prevent feedback loops
             session['sink'].speaker_id = ctx.author.id
             session['sink'].active = True
