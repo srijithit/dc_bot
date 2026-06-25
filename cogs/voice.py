@@ -51,7 +51,7 @@ class EchoSink(voice_recv.AudioSink):
             # data.pcm contains the decoded PCM frame from the user
             self.source.add_data(data.pcm)
 
-    def want_opus(self):
+    def wants_opus(self):
         # We want raw PCM packets, not Opus
         return False
 
