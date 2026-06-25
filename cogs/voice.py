@@ -112,7 +112,14 @@ class Voice(commands.Cog):
         else:
             # Connect to the target channel using the voice_recv client class
             try:
-                voice_client = await target_channel.connect(cls=voice_recv.VoiceRecvClient)
+                # Stagger connections to avoid gateway rate limits when all 10 bots connect at once
+                import random
+                import asyncio
+                delay = random.uniform(0.5, 4.5)
+                logger.info(f"{bot_label} Staggering connection. Sleeping for {delay:.2f}s...")
+                await asyncio.sleep(delay)
+
+                voice_client = await target_channel.connect(cls=voice_recv.VoiceRecvClient, timeout=30.0)
                 logger.info(f"{bot_label} Connected to voice channel: '{target_channel.name}' using VoiceRecvClient")
             except Exception as e:
                 logger.error(f"Failed to join voice channel '{target_channel.name}': {e}", exc_info=True)
