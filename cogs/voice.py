@@ -66,8 +66,13 @@ class EchoSink(voice_recv.AudioSink):
         self.source = source
         self.speaker_id = None
         self.active = False
+        self.packet_count = 0
 
     def write(self, user, data):
+        self.packet_count += 1
+        if self.packet_count % 100 == 0:
+            logger.info(f"EchoSink write: received {self.packet_count} packets. User={user}, Active={self.active}, Speaker={self.speaker_id}")
+
         # Only buffer audio if the mic loop is active and the speaking user matches the designated speaker
         if self.active and user and user.id == self.speaker_id:
             # Enforce that only devilpc's voice is echoed
